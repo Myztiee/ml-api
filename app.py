@@ -18,16 +18,19 @@ import base64
 import io
 import sys
 
-# Flush all print statements instantly (Gunicorn buffers stdout)
+# Force unbuffered stdout (prints appear immediately in Railway logs)
 sys.stdout.reconfigure(line_buffering=True, write_through=True)
 
-# Configure logging so it prints to Railway logs
+# Configure logging to always show in Railway logs
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
+
+print("🚀 App is starting up...")
+logger.info("🚀 App is starting up...")
 
 app = Flask(__name__)
 
@@ -87,6 +90,7 @@ def load_model():
         print(f"❌ Error loading model: {e}")
         logger.error(f"Error loading model: {e}")
         return False
+    
 
 # =====================================================
 # DATA PREPROCESSING (from your RandomForestAlgorithm.py)

@@ -58,6 +58,13 @@ model = None
 feature_columns = None
 model_metrics = None
 
+# Load model immediately when module is imported (for Gunicorn)
+logger.info("🔄 Attempting to load model at module import...")
+if not load_model():
+    logger.error("⚠️ Model failed to load at startup - predictions will fail!")
+else:
+    logger.info("✅ Model loaded successfully at startup!")
+
 # =====================================================
 # MODEL LOADING
 # =====================================================
@@ -83,7 +90,7 @@ def load_model():
             print("✅ Model successfully loaded!")
             return True
         else:
-            print(f"❌ Model files not found: {e}")
+            print(f"❌ Model files not found - MODEL_PATH: {os.path.exists(MODEL_PATH)}, FEATURES_PATH: {os.path.exists(FEATURES_PATH)}")
             logger.error("❌ Model files not found")
             return False
     except Exception as e:

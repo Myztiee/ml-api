@@ -1,0 +1,22 @@
+{
+  "train_file": "c:\\xampp\\htdocs\\capstone\\ml_model\\Training Set.csv",
+  "train_file_mtime": 1761796351.3326926,
+  "random_state": 42,
+  "threshold": 0.5,
+  "model_type": "RandomForestClassifier",
+  "cached_at": "2025-11-07 20:51:31",
+  "metrics": {
+    "accuracy": 0.9090909090909091,
+    "precision": 0.9100661465400273,
+    "recall": 0.9090909090909091,
+    "f1_score": 0.9094757094757094,
+    "roc_auc": 0.9810246679316889,
+    "baseline_accuracy": 0.6868686868686869,
+    "confusion_matrix": {
+      "true_negatives": 63,
+      "false_positives": 5,
+      "false_negatives": 4,
+      "true_positives": 27
+    }
+  }
+}

@@ -60,10 +60,6 @@ model_metrics = None
 
 # Load model immediately when module is imported (for Gunicorn)
 logger.info("🔄 Attempting to load model at module import...")
-if not load_model():
-    logger.error("⚠️ Model failed to load at startup - predictions will fail!")
-else:
-    logger.info("✅ Model loaded successfully at startup!")
 
 # =====================================================
 # MODEL LOADING
@@ -97,6 +93,11 @@ def load_model():
         print(f"❌ Error loading model: {e}")
         logger.error(f"Error loading model: {e}")
         return False
+
+if not load_model():
+    logger.error("⚠️ Model failed to load at startup - predictions will fail!")
+else:
+    logger.info("✅ Model loaded successfully at startup!")
     
 
 # =====================================================

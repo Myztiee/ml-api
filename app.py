@@ -39,6 +39,9 @@ MODEL_PATH = os.path.join(BASE_DIR, 'trained_model.pkl')
 FEATURES_PATH = os.path.join(BASE_DIR, 'feature_columns.pkl')
 THRESHOLD = 0.50
 
+print("🔍 Checking model path:", os.path.abspath(MODEL_PATH))
+print("📁 Files in current directory:", os.listdir(os.path.dirname(os.path.abspath(__file__))))
+
 # Global variables for model caching
 model = None
 feature_columns = None

@@ -34,8 +34,9 @@ CORS(app, resources={
 
 # Configuration
 API_KEY = os.environ.get('API_KEY', 'your-secure-api-key-here')  # Set via Railway environment variables
-MODEL_PATH = 'trained_model.pkl'
-FEATURES_PATH = 'feature_columns.pkl'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, 'trained_model.pkl')
+FEATURES_PATH = os.path.join(BASE_DIR, 'feature_columns.pkl')
 THRESHOLD = 0.50
 
 # Global variables for model caching

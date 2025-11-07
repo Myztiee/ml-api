@@ -69,11 +69,14 @@ def load_model():
                     model_metrics = metadata.get('metrics', {})
             
             logger.info("✅ Model loaded successfully")
+            print("✅ Model successfully loaded!")
             return True
         else:
+            print(f"❌ Model files not found: {e}")
             logger.error("❌ Model files not found")
             return False
     except Exception as e:
+        print(f"❌ Error loading model: {e}")
         logger.error(f"Error loading model: {e}")
         return False
 

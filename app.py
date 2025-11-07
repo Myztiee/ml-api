@@ -16,9 +16,17 @@ from sklearn.ensemble import RandomForestClassifier
 from datetime import datetime
 import base64
 import io
+import sys
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Flush all print statements instantly (Gunicorn buffers stdout)
+sys.stdout.reconfigure(line_buffering=True, write_through=True)
+
+# Configure logging so it prints to Railway logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)

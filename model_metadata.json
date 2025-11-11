@@ -1,10 +1,11 @@
 {
-  "train_file": "c:\\xampp\\htdocs\\capstone\\ml_model\\Training Set.csv",
-  "train_file_mtime": 1761796351.3326926,
+  "train_file": "c:\\xampp\\htdocs\\capstone_local\\ml_model\\Training Set.csv",
+  "train_file_mtime": 1762871218.3217366,
   "random_state": 42,
   "threshold": 0.5,
+  "label_threshold": 0.56875,
   "model_type": "RandomForestClassifier",
-  "cached_at": "2025-11-07 20:51:31",
+  "cached_at": "2025-11-11 22:28:36",
   "metrics": {
     "accuracy": 0.9090909090909091,
     "precision": 0.9100661465400273,

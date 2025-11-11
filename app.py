@@ -123,8 +123,8 @@ CATEGORICAL_COLUMNS = [
 ]
 
 NUMERIC_COLUMNS = [
-    'Age', 'MonthlyIncome', 'Grade1', 'Grade2', 'Grade3', 'Grade4', 'Grade5',
-    'CurrentGrade', 'StudyHabits', 'SleepingHabits', 'NumberOfSiblings'
+    'Age', 'MonthlyIncome', 'Grade1_Average', 'Grade2_Average', 'Grade3_Average', 'Grade4_Average', 'Grade5_Average',
+    'Grade6_CurrentGrade', 'StudyHabits', 'SleepingHabits', 'NumberOfSiblings'
 ]
 
 def categorize_income(income):
@@ -166,15 +166,15 @@ def preprocess_data(df):
                 median_val = df[col].median()
                 df[col] = df[col].fillna(median_val)
     
-    # Handle missing CurrentGrade
-    grade_cols = [c for c in ['Grade1', 'Grade2', 'Grade3', 'Grade4', 'Grade5'] if c in df.columns]
+    # Handle missing Grade6_CurrentGrade
+    grade_cols = [c for c in ['Grade1_Average', 'Grade2_Average', 'Grade3_Average', 'Grade4_Average', 'Grade5_Average'] if c in df.columns]
     if grade_cols:
-        if 'CurrentGrade' not in df.columns:
-            df['CurrentGrade'] = df[grade_cols].median(axis=1)
+        if 'Grade6_CurrentGrade' not in df.columns:
+            df['Grade6_CurrentGrade'] = df[grade_cols].median(axis=1)
         else:
-            missing_mask = df['CurrentGrade'].isna()
+            missing_mask = df['Grade6_CurrentGrade'].isna()
             if missing_mask.any():
-                df.loc[missing_mask, 'CurrentGrade'] = df.loc[missing_mask, grade_cols].median(axis=1)
+                df.loc[missing_mask, 'Grade6_CurrentGrade'] = df.loc[missing_mask, grade_cols].median(axis=1)
     
     # Handle FamilyFinancialStatus
     if 'FamilyFinancialStatus' not in df.columns and 'MonthlyIncome' in df.columns:
@@ -212,11 +212,11 @@ def calculate_completion_score(row):
     total = 0.0
     
     # Academic
-    grades = [row.get(f'Grade{i}', np.nan) for i in range(1, 6)]
+    grades = [row.get(f'Grade{i}_Average', np.nan) for i in range(1, 6)]
     grades = [g for g in grades if pd.notna(g)]
     if grades:
         avg_grade = np.mean(grades)
-        curr = row.get('CurrentGrade', np.nan)
+        curr = row.get('Grade6_CurrentGrade', np.nan)
         dynamic_threshold = np.mean(grades)
         acad_score = 0.0
         if avg_grade > dynamic_threshold:

@@ -411,7 +411,7 @@ def predict():
                     })
                     
                     # Group by base feature
-                    shap_df["base_feature"] = shap_df["feature"].apply(lambda f: f.split("_")[0])
+                    shap_df["base_feature"] = shap_df["feature"]
                     grouped = (
                         shap_df.groupby("base_feature")["impact"]
                         .agg(lambda x: np.mean(x))

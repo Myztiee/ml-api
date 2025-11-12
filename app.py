@@ -411,7 +411,14 @@ def predict():
                     })
                     
                     # Group by base feature
-                    shap_df["base_feature"] = shap_df["feature"]
+                    # Preserve Grade columns, group others
+                    def get_base_feature(f):
+                        if f.startswith('Grade'):
+                            return f  # Keep full name like "Grade1_Average"
+                        else:
+                            return f.split("_")[0]  # Group one-hot encoded 
+
+                    shap_df["base_feature"] = shap_df["feature"].apply(get_base_feature)
                     grouped = (
                         shap_df.groupby("base_feature")["impact"]
                         .agg(lambda x: np.mean(x))

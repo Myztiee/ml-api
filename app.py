@@ -348,8 +348,21 @@ def predict():
         # Load CSV into DataFrame
         df_original = pd.read_csv(io.StringIO(csv_content))
         
-        # Store original identifiers
-        original_lrns = df_original['LRN'].tolist() if 'LRN' in df_original.columns else []
+        # Store original identifiers BEFORE preprocessing (use original column name)
+        lrn_column = None
+        possible_lrn_columns = [
+            'LRN',
+            'Learner Reference No. (LRN) ex. 136743',
+            'Learner Reference No.',
+            'learner_reference_no'
+        ]
+
+        for col in possible_lrn_columns:
+            if col in df_original.columns:
+                lrn_column = col
+                break
+
+        original_lrns = df_original[lrn_column].tolist() if lrn_column else []
         original_ages = df_original['Age'].tolist() if 'Age' in df_original.columns else []
         
         # Preprocess data
@@ -397,7 +410,21 @@ def predict():
         # Format results
         results = []
         for i in range(len(y_pred)):
-            lrn = original_lrns[i] if i < len(original_lrns) else f"STU{i+1:03d}"
+            # Format LRN (handle scientific notation from Excel)
+            raw_lrn = original_lrns[i] if i < len(original_lrns) else f"STU{i+1:03d}"
+
+            # Convert scientific notation to full number
+            if isinstance(raw_lrn, (float, np.floating)):
+                lrn = f"{raw_lrn:.0f}"
+            elif isinstance(raw_lrn, str):
+                try:
+                    # Try to parse as float in case it's a string 
+                    lrn = f"{float(raw_lrn):.0f}"
+                except ValueError:
+                    lrn = raw_lrn
+            else:
+                lrn = str(raw_lrn)
+
             age = original_ages[i] if i < len(original_ages) else None
             
             # Compute grouped SHAP factors
@@ -419,6 +446,7 @@ def predict():
                             return f.split("_")[0]  # Group one-hot encoded 
 
                     shap_df["base_feature"] = shap_df["feature"].apply(get_base_feature)
+                    
                     grouped = (
                         shap_df.groupby("base_feature")["impact"]
                         .agg(lambda x: np.mean(x))

@@ -176,10 +176,9 @@ def preprocess_data(df):
             if missing_mask.any():
                 df.loc[missing_mask, 'Grade6_CurrentGrade'] = df.loc[missing_mask, grade_cols].median(axis=1)
     
-    # **CRITICAL FIX**: Handle FamilyFinancialStatus BEFORE categorical encoding
+    # Handle FamilyFinancialStatus
     if 'FamilyFinancialStatus' not in df.columns and 'MonthlyIncome' in df.columns:
         df['FamilyFinancialStatus'] = df['MonthlyIncome'].apply(categorize_income)
-        logger.info("Created FamilyFinancialStatus from MonthlyIncome")
     
     # Handle missing values in categorical columns
     for col in CATEGORICAL_COLUMNS:
@@ -187,36 +186,15 @@ def preprocess_data(df):
             if df[col].isnull().sum() > 0:
                 mode_val = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
                 df[col] = df[col].fillna(mode_val)
-                logger.info(f"Filled missing values in {col} with mode: {mode_val}")
-    
-    # **CRITICAL FIX**: Log categorical values BEFORE encoding
-    logger.info("=" * 80)
-    logger.info("PRE-ENCODING CATEGORICAL VALUES")
-    logger.info("=" * 80)
-    for col in CATEGORICAL_COLUMNS:
-        if col in df.columns:
-            unique_vals = df[col].unique()
-            logger.info(f"{col}: {unique_vals}")
     
     # One-hot encode categorical variables
     categorical_cols_to_encode = [col for col in CATEGORICAL_COLUMNS if col in df.columns]
     if categorical_cols_to_encode:
-        logger.info(f"Encoding columns: {categorical_cols_to_encode}")
         df = pd.get_dummies(df, columns=categorical_cols_to_encode, drop_first=True)
-        logger.info(f"One-hot encoded categorical columns")
-        
-        # **NEW**: Log created one-hot columns
-        one_hot_cols = [col for col in df.columns if any(cat in col for cat in categorical_cols_to_encode)]
-        logger.info(f"Created {len(one_hot_cols)} one-hot encoded columns")
-        logger.info(f"Sample one-hot columns: {one_hot_cols[:10]}")
     
     # Drop LRN if present
     if 'LRN' in df.columns:
         df = df.drop(columns=['LRN'])
-        logger.info("Dropped LRN column (identifier)")
-    
-    logger.info(f"Preprocessing complete. Final shape: {df.shape}")
-    logger.info(f"Final columns: {list(df.columns)[:20]}...")  # Show first 20
     
     return df
 
@@ -370,131 +348,15 @@ def predict():
         # Load CSV into DataFrame
         df_original = pd.read_csv(io.StringIO(csv_content))
         
-        # Store original identifiers BEFORE preprocessing (use original column name)
-        lrn_column = None
-        possible_lrn_columns = [
-            'LRN',
-            'Learner Reference No. (LRN) ex. 136743',
-            'Learner Reference No.',
-            'learner_reference_no'
-        ]
-
-        for col in possible_lrn_columns:
-            if col in df_original.columns:
-                lrn_column = col
-                break
-
-        original_lrns = df_original[lrn_column].tolist() if lrn_column else []
+        # Store original identifiers
+        original_lrns = df_original['LRN'].tolist() if 'LRN' in df_original.columns else []
         original_ages = df_original['Age'].tolist() if 'Age' in df_original.columns else []
         
         # Preprocess data
         df_processed = preprocess_data(df_original)
-
-        # **DEBUG: Check what's in df_processed BEFORE alignment**
-        logger.info("=" * 80)
-        logger.info("POST-PREPROCESSING CHECK (Before alignment)")
-        logger.info("=" * 80)
-        logger.info(f"df_processed shape: {df_processed.shape}")
-        logger.info(f"df_processed columns count: {len(df_processed.columns)}")
-
-        # Find LRN_1040 row
-        lrn_1040_idx = None
-        for idx, lrn in enumerate(original_lrns):
-            if str(lrn) == "LRN_1040" or "1040" in str(lrn):
-                lrn_1040_idx = idx
-                break
-
-        if lrn_1040_idx is not None:
-            logger.info(f"\n🔍 LRN_1040 data BEFORE alignment (Row {lrn_1040_idx}):")
-            
-            # Show all non-zero values
-            student_row = df_processed.iloc[lrn_1040_idx]
-            non_zero_cols = student_row[student_row != 0]
-            
-            logger.info(f"Non-zero features ({len(non_zero_cols)}):")
-            for col, val in non_zero_cols.items():
-                logger.info(f"  {col}: {val}")
-            
-            # Check for categorical columns
-            categorical_cols = [col for col in df_processed.columns if any(cat in col for cat in ['Sex_', 'Proximity_', 'Financial_', 'Father_', 'Mother_', 'Technology_', 'Extracurricular_'])]
-            logger.info(f"\nCategorical columns present: {len(categorical_cols)}")
-            active_categoricals = [col for col in categorical_cols if student_row[col] == 1]
-            logger.info(f"Active categorical features: {active_categoricals}")
-
-        logger.info("=" * 80)
-
-        # Remove 'CompletionRate' if present
-        if 'CompletionRate' in df_processed.columns:
-            df_processed = df_processed.drop(columns=['CompletionRate'])
-            logger.info("Removed 'CompletionRate' column before prediction")
         
         # Align columns with trained model
         X = df_processed.reindex(columns=feature_columns, fill_value=0)
-
-        logger.info("=" * 80)
-        logger.info("FEATURE ALIGNMENT DIAGNOSTIC")
-        logger.info("=" * 80)
-
-        # 1. Check shape match
-        logger.info(f"Expected features: {len(feature_columns)}")
-        logger.info(f"Actual features: {X.shape[1]}")
-        logger.info(f"Number of students: {X.shape[0]}")
-
-        # 2. Find LRN_1040 row for debugging
-        lrn_1040_idx = None
-        for idx, lrn in enumerate(original_lrns):
-            if str(lrn) == "LRN_1040" or "1040" in str(lrn):
-                lrn_1040_idx = idx
-                break
-
-        if lrn_1040_idx is not None:
-            logger.info(f"\n🔍 DEBUGGING LRN_1040 (Row {lrn_1040_idx}):")
-            
-            # 3. Check for NaN or zero-filled columns
-            student_data = X.iloc[lrn_1040_idx]
-            nan_count = student_data.isna().sum()
-            zero_count = (student_data == 0).sum()
-            
-            logger.info(f"NaN values: {nan_count}")
-            logger.info(f"Zero-filled values: {zero_count}/{len(student_data)}")
-            
-            # 4. Print Grade columns specifically
-            grade_cols = [col for col in X.columns if 'Grade' in col]
-            logger.info(f"\nGrade columns found: {len(grade_cols)}")
-            for col in grade_cols:
-                logger.info(f"  {col}: {student_data[col]}")
-            
-            # 5. Print categorical columns (one-hot encoded)
-            categorical_encoded = [col for col in X.columns if any(cat in col for cat in ['Sex_', 'Proximity_', 'Financial_', 'Father_', 'Mother_', 'Technology_', 'Extracurricular_'])]
-            logger.info(f"\nCategorical columns found: {len(categorical_encoded)}")
-            active_categories = [col for col in categorical_encoded if student_data[col] == 1]
-            logger.info(f"Active categories: {active_categories}")
-            
-            # 6. Compare with feature_columns order
-            if len(X.columns) != len(feature_columns):
-                logger.error("❌ COLUMN COUNT MISMATCH!")
-                missing_in_X = set(feature_columns) - set(X.columns)
-                extra_in_X = set(X.columns) - set(feature_columns)
-                if missing_in_X:
-                    logger.error(f"Missing in X: {missing_in_X}")
-                if extra_in_X:
-                    logger.error(f"Extra in X: {extra_in_X}")
-            else:
-                column_order_match = list(X.columns) == feature_columns
-                logger.info(f"Column order match: {column_order_match}")
-                if not column_order_match:
-                    logger.warning("⚠️ Column order differs from training!")
-
-        # 7. Make prediction with logging
-        logger.info("\n📊 Running model prediction...")
-        y_pred_proba = model.predict_proba(X)[:, 1]
-
-        if lrn_1040_idx is not None:
-            logger.info(f"LRN_1040 probability: {y_pred_proba[lrn_1040_idx]:.4f}")
-            logger.info(f"Expected probability: ~0.7369")
-            logger.info(f"Difference: {abs(y_pred_proba[lrn_1040_idx] - 0.7369):.4f}")
-
-        logger.info("=" * 80)
         
         # Get threshold
         threshold = data.get('threshold', THRESHOLD)
@@ -535,21 +397,7 @@ def predict():
         # Format results
         results = []
         for i in range(len(y_pred)):
-            # Format LRN (handle scientific notation from Excel)
-            raw_lrn = original_lrns[i] if i < len(original_lrns) else f"STU{i+1:03d}"
-
-            # Convert scientific notation to full number
-            if isinstance(raw_lrn, (float, np.floating)):
-                lrn = f"{raw_lrn:.0f}"
-            elif isinstance(raw_lrn, str):
-                try:
-                    # Try to parse as float in case it's a string 
-                    lrn = f"{float(raw_lrn):.0f}"
-                except ValueError:
-                    lrn = raw_lrn
-            else:
-                lrn = str(raw_lrn)
-
+            lrn = original_lrns[i] if i < len(original_lrns) else f"STU{i+1:03d}"
             age = original_ages[i] if i < len(original_ages) else None
             
             # Compute grouped SHAP factors
@@ -563,15 +411,7 @@ def predict():
                     })
                     
                     # Group by base feature
-                    # Preserve Grade columns, group others
-                    def get_base_feature(f):
-                        if f.startswith('Grade'):
-                            return f  # Keep full name like "Grade1_Average"
-                        else:
-                            return f.split("_")[0]  # Group one-hot encoded 
-
-                    shap_df["base_feature"] = shap_df["feature"].apply(get_base_feature)
-                    
+                    shap_df["base_feature"] = shap_df["feature"].apply(lambda f: f.split("_")[0])
                     grouped = (
                         shap_df.groupby("base_feature")["impact"]
                         .agg(lambda x: np.mean(x))

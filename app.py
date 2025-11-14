@@ -375,6 +375,71 @@ def predict():
         
         # Align columns with trained model
         X = df_processed.reindex(columns=feature_columns, fill_value=0)
+
+        logger.info("=" * 80)
+        logger.info("FEATURE ALIGNMENT DIAGNOSTIC")
+        logger.info("=" * 80)
+
+        # 1. Check shape match
+        logger.info(f"Expected features: {len(feature_columns)}")
+        logger.info(f"Actual features: {X.shape[1]}")
+        logger.info(f"Number of students: {X.shape[0]}")
+
+        # 2. Find LRN_1040 row for debugging
+        lrn_1040_idx = None
+        for idx, lrn in enumerate(original_lrns):
+            if str(lrn) == "LRN_1040" or "1040" in str(lrn):
+                lrn_1040_idx = idx
+                break
+
+        if lrn_1040_idx is not None:
+            logger.info(f"\n🔍 DEBUGGING LRN_1040 (Row {lrn_1040_idx}):")
+            
+            # 3. Check for NaN or zero-filled columns
+            student_data = X.iloc[lrn_1040_idx]
+            nan_count = student_data.isna().sum()
+            zero_count = (student_data == 0).sum()
+            
+            logger.info(f"NaN values: {nan_count}")
+            logger.info(f"Zero-filled values: {zero_count}/{len(student_data)}")
+            
+            # 4. Print Grade columns specifically
+            grade_cols = [col for col in X.columns if 'Grade' in col]
+            logger.info(f"\nGrade columns found: {len(grade_cols)}")
+            for col in grade_cols:
+                logger.info(f"  {col}: {student_data[col]}")
+            
+            # 5. Print categorical columns (one-hot encoded)
+            categorical_encoded = [col for col in X.columns if any(cat in col for cat in ['Sex_', 'Proximity_', 'Financial_', 'Father_', 'Mother_', 'Technology_', 'Extracurricular_'])]
+            logger.info(f"\nCategorical columns found: {len(categorical_encoded)}")
+            active_categories = [col for col in categorical_encoded if student_data[col] == 1]
+            logger.info(f"Active categories: {active_categories}")
+            
+            # 6. Compare with feature_columns order
+            if len(X.columns) != len(feature_columns):
+                logger.error("❌ COLUMN COUNT MISMATCH!")
+                missing_in_X = set(feature_columns) - set(X.columns)
+                extra_in_X = set(X.columns) - set(feature_columns)
+                if missing_in_X:
+                    logger.error(f"Missing in X: {missing_in_X}")
+                if extra_in_X:
+                    logger.error(f"Extra in X: {extra_in_X}")
+            else:
+                column_order_match = list(X.columns) == feature_columns
+                logger.info(f"Column order match: {column_order_match}")
+                if not column_order_match:
+                    logger.warning("⚠️ Column order differs from training!")
+
+        # 7. Make prediction with logging
+        logger.info("\n📊 Running model prediction...")
+        y_pred_proba = model.predict_proba(X)[:, 1]
+
+        if lrn_1040_idx is not None:
+            logger.info(f"LRN_1040 probability: {y_pred_proba[lrn_1040_idx]:.4f}")
+            logger.info(f"Expected probability: ~0.7369")
+            logger.info(f"Difference: {abs(y_pred_proba[lrn_1040_idx] - 0.7369):.4f}")
+
+        logger.info("=" * 80)
         
         # Get threshold
         threshold = data.get('threshold', THRESHOLD)

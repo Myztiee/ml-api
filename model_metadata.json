@@ -5,7 +5,7 @@
   "threshold": 0.5,
   "label_threshold": 0.61875,
   "model_type": "RandomForestClassifier",
-  "cached_at": "2025-11-12 22:28:07",
+  "cached_at": "2025-11-14 23:33:22",
   "metrics": {
     "accuracy": 0.8172043010752689,
     "precision": 0.827972709551657,

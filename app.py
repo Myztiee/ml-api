@@ -507,29 +507,21 @@ def predict():
                         "impact": shap_values_row
                     })
                     
-                    # Group by base feature
-                    # Preserve Grade columns, group others
-                    def get_base_feature(f):
-                        if f.startswith('Grade'):
-                            return f  # Keep full name like "Grade1_Average"
-                        else:
-                            return f.split("_")[0]  # Group one-hot encoded 
-
-                    shap_df["base_feature"] = shap_df["feature"].apply(get_base_feature)
+                    # 🔧 FIX: Don't group - keep individual features like local Python
+                    # Sort by absolute impact but preserve original values
+                    shap_df['abs_impact'] = shap_df['impact'].abs()
+                    shap_df = shap_df.sort_values('abs_impact', ascending=False)
                     
-                    grouped = (
-                        shap_df.groupby("base_feature")["impact"]
-                        .agg(lambda x: np.mean(x))
-                        .reset_index()
-                    )
-                    
-                    # Filter based on prediction
+                    # Filter based on prediction (same logic as before)
                     if int(y_pred[i]) == 0:  # At Risk
-                        grouped = grouped[grouped["impact"] < 0].sort_values("impact", ascending=True)
+                        filtered = shap_df[shap_df['impact'] < 0]
                     else:  # Will Complete
-                        grouped = grouped[grouped["impact"] > 0].sort_values("impact", ascending=False)
+                        filtered = shap_df[shap_df['impact'] > 0]
                     
-                    top_factors = grouped.head(5).to_dict(orient="records")
+                    # Take top 10 individual features (not grouped)
+                    top_factors = filtered.head(10)[['feature', 'impact']].rename(
+                        columns={'feature': 'base_feature'}
+                    ).to_dict(orient="records")
                 except Exception as e:
                     logger.warning(f"Error processing SHAP for student {i}: {e}")
             

@@ -176,9 +176,10 @@ def preprocess_data(df):
             if missing_mask.any():
                 df.loc[missing_mask, 'Grade6_CurrentGrade'] = df.loc[missing_mask, grade_cols].median(axis=1)
     
-    # Handle FamilyFinancialStatus
+    # **CRITICAL FIX**: Handle FamilyFinancialStatus BEFORE categorical encoding
     if 'FamilyFinancialStatus' not in df.columns and 'MonthlyIncome' in df.columns:
         df['FamilyFinancialStatus'] = df['MonthlyIncome'].apply(categorize_income)
+        logger.info("Created FamilyFinancialStatus from MonthlyIncome")
     
     # Handle missing values in categorical columns
     for col in CATEGORICAL_COLUMNS:
@@ -186,15 +187,36 @@ def preprocess_data(df):
             if df[col].isnull().sum() > 0:
                 mode_val = df[col].mode()[0] if not df[col].mode().empty else 'Unknown'
                 df[col] = df[col].fillna(mode_val)
+                logger.info(f"Filled missing values in {col} with mode: {mode_val}")
+    
+    # **CRITICAL FIX**: Log categorical values BEFORE encoding
+    logger.info("=" * 80)
+    logger.info("PRE-ENCODING CATEGORICAL VALUES")
+    logger.info("=" * 80)
+    for col in CATEGORICAL_COLUMNS:
+        if col in df.columns:
+            unique_vals = df[col].unique()
+            logger.info(f"{col}: {unique_vals}")
     
     # One-hot encode categorical variables
     categorical_cols_to_encode = [col for col in CATEGORICAL_COLUMNS if col in df.columns]
     if categorical_cols_to_encode:
+        logger.info(f"Encoding columns: {categorical_cols_to_encode}")
         df = pd.get_dummies(df, columns=categorical_cols_to_encode, drop_first=True)
+        logger.info(f"One-hot encoded categorical columns")
+        
+        # **NEW**: Log created one-hot columns
+        one_hot_cols = [col for col in df.columns if any(cat in col for cat in categorical_cols_to_encode)]
+        logger.info(f"Created {len(one_hot_cols)} one-hot encoded columns")
+        logger.info(f"Sample one-hot columns: {one_hot_cols[:10]}")
     
     # Drop LRN if present
     if 'LRN' in df.columns:
         df = df.drop(columns=['LRN'])
+        logger.info("Dropped LRN column (identifier)")
+    
+    logger.info(f"Preprocessing complete. Final shape: {df.shape}")
+    logger.info(f"Final columns: {list(df.columns)[:20]}...")  # Show first 20
     
     return df
 
@@ -367,6 +389,39 @@ def predict():
         
         # Preprocess data
         df_processed = preprocess_data(df_original)
+
+        # **DEBUG: Check what's in df_processed BEFORE alignment**
+        logger.info("=" * 80)
+        logger.info("POST-PREPROCESSING CHECK (Before alignment)")
+        logger.info("=" * 80)
+        logger.info(f"df_processed shape: {df_processed.shape}")
+        logger.info(f"df_processed columns count: {len(df_processed.columns)}")
+
+        # Find LRN_1040 row
+        lrn_1040_idx = None
+        for idx, lrn in enumerate(original_lrns):
+            if str(lrn) == "LRN_1040" or "1040" in str(lrn):
+                lrn_1040_idx = idx
+                break
+
+        if lrn_1040_idx is not None:
+            logger.info(f"\n🔍 LRN_1040 data BEFORE alignment (Row {lrn_1040_idx}):")
+            
+            # Show all non-zero values
+            student_row = df_processed.iloc[lrn_1040_idx]
+            non_zero_cols = student_row[student_row != 0]
+            
+            logger.info(f"Non-zero features ({len(non_zero_cols)}):")
+            for col, val in non_zero_cols.items():
+                logger.info(f"  {col}: {val}")
+            
+            # Check for categorical columns
+            categorical_cols = [col for col in df_processed.columns if any(cat in col for cat in ['Sex_', 'Proximity_', 'Financial_', 'Father_', 'Mother_', 'Technology_', 'Extracurricular_'])]
+            logger.info(f"\nCategorical columns present: {len(categorical_cols)}")
+            active_categoricals = [col for col in categorical_cols if student_row[col] == 1]
+            logger.info(f"Active categorical features: {active_categoricals}")
+
+        logger.info("=" * 80)
 
         # Remove 'CompletionRate' if present
         if 'CompletionRate' in df_processed.columns:

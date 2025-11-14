@@ -367,6 +367,11 @@ def predict():
         
         # Preprocess data
         df_processed = preprocess_data(df_original)
+
+        # Remove 'CompletionRate' if present
+        if 'CompletionRate' in df_processed.columns:
+            df_processed = df_processed.drop(columns=['CompletionRate'])
+            logger.info("Removed 'CompletionRate' column before prediction")
         
         # Align columns with trained model
         X = df_processed.reindex(columns=feature_columns, fill_value=0)
